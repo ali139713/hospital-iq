@@ -1,0 +1,77 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run lint)",
+      "Bash(npm run lint:fix)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run test)",
+      "Bash(npm run test:watch)",
+      "Bash(npm run build)",
+      "Bash(npm run dev)",
+      "Bash(npx prisma generate)",
+      "Bash(npx prisma migrate*)",
+      "Bash(npx prisma studio)",
+      "Bash(npx ts-node*)",
+      "Bash(node -e *)",
+      "Bash(npx shadcn*)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(git push --force*)",
+      "Bash(npx prisma migrate reset*)"
+    ]
+  },
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '\\n🏥 Hospital Agent — session started\\n   Node: $(node -v 2>/dev/null || echo \"check nvm use 20.19.4\")\\n   DB:   $(test -f /Users/aliazhar/Repos/hospital-agent/dev.db && echo \"dev.db exists\" || echo \"⚠️  dev.db missing — run /seed-db\")\\n   Key:  $(test -n \"$ANTHROPIC_API_KEY\" && echo \"ANTHROPIC_API_KEY set\" || echo \"⚠️  ANTHROPIC_API_KEY not set\")'"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[hook] Running bash command in hospital-agent'"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/aliazhar/Repos/hospital-agent && export NVM_DIR=\"$HOME/.nvm\" && [ -s \"$NVM_DIR/nvm.sh\" ] && . \"$NVM_DIR/nvm.sh\" && nvm use 20.19.4 --silent && npm run lint:fix --silent 2>/dev/null || true"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(npm test*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[hook] Tests completed — check output above for failures'"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '\n╔══════════════════════════════════════════╗\n║  Hospital Agent — Session ended          ║\n║  Run: npm run typecheck && npm test      ║\n║  Docs: cat CLAUDE.md                    ║\n╚══════════════════════════════════════════╝'"
+          }
+        ]
+      }
+    ]
+  }
+}

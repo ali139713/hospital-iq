@@ -1,0 +1,41 @@
+generator client {
+  provider        = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Hospital {
+  id          String      @id @default(cuid())
+  name        String
+  type        String      // "public" | "private" | "semi-government"
+  address     String
+  area        String
+  lat         Float
+  lng         Float
+  phone       String
+  emergency   Boolean     @default(false)
+  beds        Int
+  rating      Float       // 1.0 – 5.0
+  timings     String      // e.g. "24/7" or "8am–10pm"
+  established Int         // year
+  specialties Specialty[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([area])
+  @@index([emergency])
+  @@index([type])
+}
+
+model Specialty {
+  id         String   @id @default(cuid())
+  name       String
+  rating     Float    // specialty-specific rating 1–5
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  hospitalId String
+
+  @@index([hospitalId])
+  @@index([name])
+}
