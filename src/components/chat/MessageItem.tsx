@@ -1,6 +1,6 @@
 'use client'
 
-import { type Message } from 'ai'
+import { type UIMessage } from 'ai'
 import { Bot, User } from 'lucide-react'
 import dynamic from 'next/dynamic'
 import { cn } from '@/lib/utils'
@@ -41,6 +41,13 @@ const ComparisonTable = dynamic(
   { loading: () => <ChartSkeleton /> },
 )
 
+type AnyToolPart = {
+  type: string
+  toolCallId: string
+  state: string
+  output?: unknown
+}
+
 function ToolResult({ toolName, result }: { toolName: string; result: unknown }) {
   switch (toolName) {
     case 'searchHospitals':
@@ -68,11 +75,22 @@ function ToolSkeleton({ toolName }: { toolName: string }) {
 }
 
 interface MessageItemProps {
-  message: Message
+  message: UIMessage
 }
 
 export function MessageItem({ message }: MessageItemProps) {
   const isUser = message.role === 'user'
+
+  // In v6, text content is in parts with type 'text'
+  const textContent = message.parts
+    .filter((p) => p.type === 'text')
+    .map((p) => (p as { type: 'text'; text: string }).text)
+    .join('')
+
+  // Tool parts have type 'tool-{toolName}'
+  const toolParts = message.parts
+    .filter((p) => p.type.startsWith('tool-'))
+    .map((p) => p as unknown as AnyToolPart)
 
   return (
     <div className={cn('flex gap-3', isUser && 'flex-row-reverse')}>
@@ -89,7 +107,7 @@ export function MessageItem({ message }: MessageItemProps) {
       {/* Content */}
       <div className={cn('flex max-w-[85%] flex-col gap-2', isUser && 'items-end')}>
         {/* Text content */}
-        {message.content && (
+        {textContent && (
           <div
             className={cn(
               'rounded-2xl px-4 py-2.5 text-sm',
@@ -98,24 +116,26 @@ export function MessageItem({ message }: MessageItemProps) {
                 : 'rounded-tl-sm bg-muted text-foreground',
             )}
           >
-            {message.content}
+            {textContent}
           </div>
         )}
 
         {/* Tool invocation results — rendered as interactive components */}
-        {message.toolInvocations?.map((tool) => {
-          if (tool.state !== 'result') {
+        {toolParts.map((part) => {
+          const toolName = part.type.slice(5) // strip 'tool-' prefix
+
+          if (part.state !== 'output-available') {
             return (
-              <div key={tool.toolCallId} className="w-full">
-                <ToolSkeleton toolName={tool.toolName} />
+              <div key={part.toolCallId} className="w-full">
+                <ToolSkeleton toolName={toolName} />
               </div>
             )
           }
 
           return (
-            <ErrorBoundary key={tool.toolCallId}>
+            <ErrorBoundary key={part.toolCallId}>
               <div className="w-full min-w-[320px]">
-                <ToolResult toolName={tool.toolName} result={tool.result} />
+                <ToolResult toolName={toolName} result={part.output} />
               </div>
             </ErrorBoundary>
           )

@@ -1,13 +1,15 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useChat } from 'ai/react'
+import { useChat } from '@ai-sdk/react'
+import { DefaultChatTransport } from 'ai'
 import { MessageList } from './MessageList'
 import { ChatInput } from './ChatInput'
 import { Activity, Sun, Moon } from 'lucide-react'
 
 export function ChatInterface() {
   const [isDark, setIsDark] = useState(false)
+  const [input, setInput] = useState('')
 
   useEffect(() => {
     setIsDark(document.documentElement.classList.contains('dark'))
@@ -19,13 +21,22 @@ export function ChatInterface() {
     setIsDark(next)
   }
 
-  const { messages, input, isLoading, handleInputChange, handleSubmit, setInput, error } = useChat({
-    api: '/api/v1/chat',
-    maxSteps: 3,
+  const { messages, sendMessage, status, error } = useChat({
+    transport: new DefaultChatTransport({ api: '/api/v1/chat' }),
     onError(err: Error) {
       console.error('Chat error:', err)
     },
   })
+
+  const isLoading = status === 'submitted' || status === 'streaming'
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!input.trim() || isLoading) return
+    const text = input
+    setInput('')
+    await sendMessage({ text })
+  }
 
   function handleSuggestedPrompt(prompt: string) {
     setInput(prompt)
@@ -41,7 +52,7 @@ export function ChatInterface() {
           </div>
           <div>
             <h1 className="text-sm font-semibold">Hospital Analytics</h1>
-            <p className="text-xs text-muted-foreground">Lahore, Pakistan · 30 hospitals</p>
+            <p className="text-xs text-muted-foreground">Pakistan · 80+ hospitals</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -75,7 +86,7 @@ export function ChatInterface() {
       <ChatInput
         input={input}
         isLoading={isLoading}
-        onInputChange={(v) => handleInputChange({ target: { value: v } } as React.ChangeEvent<HTMLInputElement>)}
+        onInputChange={setInput}
         onSubmit={handleSubmit}
         onSuggestedPrompt={handleSuggestedPrompt}
         showSuggestions={messages.length === 0}

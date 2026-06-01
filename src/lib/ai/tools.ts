@@ -24,17 +24,21 @@ export const hospitalTools = {
   searchHospitals: tool({
     description:
       'Search hospitals by specialty, area, type, or emergency availability. Use this when the user asks to find hospitals or describes medical needs.',
-    parameters: z.object({
-      specialty: z.string().max(50).optional().describe('Medical specialty e.g. "Cardiology", "Oncology"'),
-      area: z.string().max(50).optional().describe('Area of Lahore e.g. "DHA", "Gulberg", "Johar Town"'),
+    inputSchema: z.object({
+      specialty: z.string().max(50).optional().describe('Medical specialty e.g. "Cardiology", "Oncology", "Gynecology"'),
+      city: z.string().max(50).optional().describe('City in Pakistan e.g. "Karachi", "Lahore", "Islamabad", "Peshawar", "Quetta", "Multan", "Faisalabad"'),
+      province: z.string().max(50).optional().describe('Province e.g. "Punjab", "Sindh", "KPK", "Balochistan", "ICT"'),
+      area: z.string().max(50).optional().describe('Specific area or neighbourhood within a city'),
       type: z.enum(['public', 'private', 'semi-government']).optional(),
       emergency: z.boolean().optional().describe('Filter to emergency-capable hospitals only'),
     }),
-    execute: async ({ specialty, area, type, emergency }): Promise<SearchHospitalsResult> => {
+    execute: async ({ specialty, city, province, area, type, emergency }): Promise<SearchHospitalsResult> => {
       const rows = await prisma.hospital.findMany({
         where: {
           ...(emergency !== undefined && { emergency }),
           ...(type && { type }),
+          ...(city && { city: { contains: city } }),
+          ...(province && { province: { contains: province } }),
           ...(area && { area: { contains: area } }),
           ...(specialty && { specialties: { some: { name: { contains: specialty } } } }),
         },
@@ -44,14 +48,14 @@ export const hospitalTools = {
       })
 
       const hospitals = rows.map((h) => ({ ...h, type: castType(h.type) }))
-      return { hospitals, total: hospitals.length, query: { specialty, emergency, area, type } }
+      return { hospitals, total: hospitals.length, query: { specialty, emergency, area, type, city, province } }
     },
   }),
 
   showHospitalDetail: tool({
     description:
       'Show full details for a specific hospital by name or ID. Use when user asks about a specific hospital.',
-    parameters: z.object({
+    inputSchema: z.object({
       name: z.string().max(100).optional().describe('Hospital name to search for'),
       id: z.string().optional().describe('Hospital ID if known'),
     }),
@@ -68,15 +72,19 @@ export const hospitalTools = {
   showHospitalMap: tool({
     description:
       'Display hospitals on an interactive map. Use when user asks "where is", "show on map", or asks about location.',
-    parameters: z.object({
+    inputSchema: z.object({
       specialty: z.string().max(50).optional(),
+      city: z.string().max(50).optional(),
+      province: z.string().max(50).optional(),
       area: z.string().max(50).optional(),
       emergency: z.boolean().optional(),
     }),
-    execute: async ({ specialty, area, emergency }): Promise<HospitalMapResult> => {
+    execute: async ({ specialty, city, province, area, emergency }): Promise<HospitalMapResult> => {
       const hospitals = await prisma.hospital.findMany({
         where: {
           ...(emergency !== undefined && { emergency }),
+          ...(city && { city: { contains: city } }),
+          ...(province && { province: { contains: province } }),
           ...(area && { area: { contains: area } }),
           ...(specialty && { specialties: { some: { name: { contains: specialty } } } }),
         },
@@ -99,7 +107,7 @@ export const hospitalTools = {
   showSpecialtyStats: tool({
     description:
       'Show analytics and statistics about specialties across all hospitals. Use for "how many", "statistics", "analytics", "breakdown" queries.',
-    parameters: z.object({
+    inputSchema: z.object({
       topN: z.number().min(1).max(20).default(10).describe('Number of top specialties to return'),
     }),
     execute: async ({ topN }): Promise<SpecialtyStatsResult> => {
@@ -134,7 +142,7 @@ export const hospitalTools = {
   showEmergencyHospitals: tool({
     description:
       'List all hospitals with 24/7 emergency services, sorted by rating. Use for "emergency", "urgent care", "accident" queries.',
-    parameters: z.object({
+    inputSchema: z.object({
       area: z.string().max(50).optional().describe('Filter by area of Lahore'),
     }),
     execute: async ({ area }): Promise<EmergencyHospitalsResult> => {
@@ -153,7 +161,7 @@ export const hospitalTools = {
   compareHospitals: tool({
     description:
       'Side-by-side comparison of 2 or more hospitals. Use when user asks to "compare" or asks "which is better".',
-    parameters: z.object({
+    inputSchema: z.object({
       names: z.array(z.string()).min(2).max(4).describe('Names of hospitals to compare'),
     }),
     execute: async ({ names }): Promise<CompareHospitalsResult> => {

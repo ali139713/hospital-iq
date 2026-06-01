@@ -11,6 +11,8 @@ export interface Hospital {
   id: string
   name: string
   type: HospitalType
+  city: string
+  province: string
   address: string
   area: string
   lat: number
@@ -31,6 +33,8 @@ export interface HospitalSummary {
   id: string
   name: string
   type: HospitalType
+  city: string
+  province: string
   address: string
   area: string
   lat: number
@@ -50,7 +54,7 @@ export interface HospitalSummary {
 export interface SearchHospitalsResult {
   hospitals: HospitalSummary[]
   total: number
-  query: { specialty?: string; emergency?: boolean; area?: string; type?: HospitalType }
+  query: { specialty?: string; emergency?: boolean; area?: string; type?: HospitalType; city?: string; province?: string }
 }
 
 export interface HospitalDetailResult {

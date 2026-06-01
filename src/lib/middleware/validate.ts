@@ -1,13 +1,20 @@
 import { z } from 'zod'
 
-const messageSchema = z.object({
+// v6 UIMessage: parts contain text, tools, etc. Text content is in parts.
+const uiMessagePartSchema = z.object({
+  type: z.string().max(100),
+  text: z.string().optional(),
+}).passthrough()
+
+const uiMessageSchema = z.object({
+  id: z.string().max(100),
   role: z.enum(['user', 'assistant', 'system']),
-  content: z.string().min(1).max(1000),
-})
+  parts: z.array(uiMessagePartSchema).max(50),
+}).passthrough()
 
 export const chatRequestSchema = z.object({
   messages: z
-    .array(messageSchema)
+    .array(uiMessageSchema)
     .min(1, 'At least one message is required')
     .max(50, 'Conversation too long'),
 })

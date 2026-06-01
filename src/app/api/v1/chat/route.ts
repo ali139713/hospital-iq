@@ -1,4 +1,4 @@
-import { streamText } from 'ai'
+import { streamText, convertToModelMessages, stepCountIs, type UIMessage } from 'ai'
 import { anthropic } from '@ai-sdk/anthropic'
 import { NextResponse } from 'next/server'
 import { env } from '@/env'
@@ -51,7 +51,6 @@ export async function POST(req: Request) {
   // ── Stream response ────────────────────────────────────────────────────────
   try {
     const systemMessages = buildSystemMessages()
-    // Flatten multi-block system content to a single string for the API
     const systemText = (
       systemMessages[0].content as Array<{ text?: string }>
     )
@@ -61,13 +60,15 @@ export async function POST(req: Request) {
     const result = streamText({
       model: anthropic('claude-haiku-4-5-20251001'),
       system: systemText,
-      messages,
+      messages: await convertToModelMessages(messages as UIMessage[]),
       tools: hospitalTools,
-      maxSteps: 3, // Caps agentic loops — prevents runaway costs
+      stopWhen: stepCountIs(3),
+      onError({ error }) {
+        log.error({ event: 'stream_error', error }, 'Stream error from Anthropic')
+      },
       onFinish({ usage, finishReason }) {
-        // Log token usage with estimated cost for monitoring
-        const inputCost = (usage.promptTokens / 1_000_000) * 0.8   // Haiku: $0.80/MTok in
-        const outputCost = (usage.completionTokens / 1_000_000) * 4 // Haiku: $4/MTok out
+        const inputCost = ((usage.inputTokens ?? 0) / 1_000_000) * 0.8
+        const outputCost = ((usage.outputTokens ?? 0) / 1_000_000) * 4
         log.info(
           {
             event: 'chat_complete',
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
       },
     })
 
-    return result.toDataStreamResponse({
+    return result.toUIMessageStreamResponse({
       headers: { 'X-Request-Id': requestId },
     })
   } catch (err) {

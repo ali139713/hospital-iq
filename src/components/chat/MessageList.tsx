@@ -1,12 +1,12 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { type Message } from 'ai'
+import { type UIMessage } from 'ai'
 import { MessageItem } from './MessageItem'
 import { Bot } from 'lucide-react'
 
 interface MessageListProps {
-  messages: Message[]
+  messages: UIMessage[]
   isLoading: boolean
 }
 
